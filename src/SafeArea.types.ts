@@ -7,6 +7,11 @@ export interface EdgeInsets {
   left: number;
 }
 
+export interface SafeAreaSize {
+  height: number;
+  width: number;
+}
+
 export type InsetChangedEvent = NativeSyntheticEvent<{ insets: EdgeInsets }>;
 
 export type InsetChangeNativeCallback = (event: InsetChangedEvent) => void;

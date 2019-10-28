@@ -1,13 +1,16 @@
 import * as React from 'react';
-import { StyleSheet, View, ViewProps } from 'react-native';
-import { EdgeInsets, InsetChangedEvent } from './SafeArea.types';
+import { StyleSheet, View, ViewProps, LayoutChangeEvent } from 'react-native';
+import { EdgeInsets, InsetChangedEvent, SafeAreaSize } from './SafeArea.types';
 import NativeSafeAreaView from './NativeSafeAreaView';
 
-export const SafeAreaContext = React.createContext<EdgeInsets | null>(null);
+export const SafeAreaContext = React.createContext<
+  EdgeInsets & SafeAreaSize | null
+>(null);
 
 export interface SafeAreaViewProps {
   children?: React.ReactNode;
   initialSafeAreaInsets?: EdgeInsets | null;
+  initialSafeAreaSize: SafeAreaSize;
 }
 
 export function SafeAreaProvider({
@@ -18,9 +21,23 @@ export function SafeAreaProvider({
   const [insets, setInsets] = React.useState<EdgeInsets | null | undefined>(
     initialSafeAreaInsets,
   );
-  const onInsetsChange = React.useCallback((event: InsetChangedEvent) => {
+
+  const [safeAreaSize, setSafeAreaSize] = React.useState<SafeAreaSize>({
+    height: 0,
+    width: 0,
+  });
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { height, width } = event.nativeEvent.layout;
+
+    setSafeAreaSize({
+      height,
+      width,
+    });
+  };
+
+  const onInsetsChange = (event: InsetChangedEvent) =>
     setInsets(event.nativeEvent.insets);
-  }, []);
 
   // If a provider is nested inside of another provider then we can just use
   // the parent insets, without rendering another native safe area view
@@ -28,9 +45,13 @@ export function SafeAreaProvider({
     return <View style={styles.fill}>{children}</View>;
   } else {
     return (
-      <NativeSafeAreaView style={styles.fill} onInsetsChange={onInsetsChange}>
+      <NativeSafeAreaView
+        style={styles.fill}
+        onInsetsChange={onInsetsChange}
+        onLayout={onLayout}
+      >
         {insets != null ? (
-          <SafeAreaContext.Provider value={insets}>
+          <SafeAreaContext.Provider value={{ ...insets, ...safeAreaSize }}>
             {children}
           </SafeAreaContext.Provider>
         ) : null}
@@ -49,7 +70,7 @@ function useParentSafeArea(): React.ContextType<typeof SafeAreaContext> {
   return React.useContext(SafeAreaContext);
 }
 
-export function useSafeArea(): EdgeInsets {
+export function useSafeArea(): EdgeInsets & SafeAreaSize {
   const safeArea = React.useContext(SafeAreaContext);
   if (safeArea == null) {
     throw new Error(
